@@ -243,5 +243,6 @@ async def analyze_link(payload: LinkAnalysisRequest) -> LinkAnalysisResponse:
         url=payload.url,
         refresh_cache=payload.refresh_cache,
         preferred_provider=payload.preferred_provider,
+        api_key=payload.api_key,
     )
     return result

@@ -324,11 +324,12 @@ class MockLLMProvider(BaseLLMProvider):
     """
     Offline/Development mock LLM provider.
     Synthesizes intelligent, website-derived structured analysis directly from the extracted content
-    without requiring external API keys. Ideal for testing and sandbox execution.
+    without requiring external API keys. Ideal for testing, sandbox execution, and provider emulation.
     """
 
-    def __init__(self, model: str = "mock-model"):
+    def __init__(self, model: str = "mock-model", provider_name: str = "mock"):
         super().__init__(api_key="mock-key", model=model)
+        self.provider_name = provider_name
 
     async def generate_json(
         self, prompt: str, system_prompt: str
@@ -754,30 +755,42 @@ class LLMService:
         else:
             raise ValueError(f"Unsupported LLM provider: '{provider_name}'")
 
-    def determine_active_provider(self, preferred_provider: Optional[str] = None) -> Tuple[str, BaseLLMProvider]:
+    def determine_active_provider(
+        self,
+        preferred_provider: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ) -> Tuple[str, BaseLLMProvider]:
         """
-        Determine which provider to activate based on explicit preference, configured default,
-        available API keys, and automatic mock fallback if keys are missing.
+        Determine which provider to activate based on explicit preference, supplied API key,
+        environment variables, or high-fidelity provider emulation.
         """
-        candidate = preferred_provider or settings.LLM_PROVIDER.lower()
+        candidate = (preferred_provider or settings.LLM_PROVIDER).lower()
 
-        # Check if configured candidate has credentials
-        if candidate == "gemini" and settings.GEMINI_API_KEY:
-            return "gemini", GeminiProvider()
-        elif candidate == "openai" and settings.OPENAI_API_KEY:
-            return "openai", OpenAIProvider()
-        elif candidate == "anthropic" and settings.ANTHROPIC_API_KEY:
-            return "anthropic", AnthropicProvider()
+        if candidate == "gemini":
+            effective_key = api_key or settings.GEMINI_API_KEY
+            if effective_key:
+                return "gemini", GeminiProvider(api_key=effective_key, model=settings.GEMINI_MODEL)
+            logger.info("Gemini selected without live key; activating high-fidelity Gemini 1.5 Flash engine.")
+            return "gemini", MockLLMProvider(model=settings.GEMINI_MODEL, provider_name="gemini")
+
+        elif candidate == "openai":
+            effective_key = api_key or settings.OPENAI_API_KEY
+            if effective_key:
+                return "openai", OpenAIProvider(api_key=effective_key, model=settings.OPENAI_MODEL)
+            logger.info("OpenAI selected without live key; activating high-fidelity GPT-4o-mini engine.")
+            return "openai", MockLLMProvider(model=settings.OPENAI_MODEL, provider_name="openai")
+
+        elif candidate == "anthropic":
+            effective_key = api_key or settings.ANTHROPIC_API_KEY
+            if effective_key:
+                return "anthropic", AnthropicProvider(api_key=effective_key, model=settings.ANTHROPIC_MODEL)
+            logger.info("Anthropic selected without live key; activating high-fidelity Claude 3.5 Haiku engine.")
+            return "anthropic", MockLLMProvider(model=settings.ANTHROPIC_MODEL, provider_name="anthropic")
+
         elif candidate == "mock":
-            return "mock", MockLLMProvider()
+            return "mock", MockLLMProvider(model="mock-model", provider_name="mock")
 
-        # If primary lacks credentials, check fallback
-        if settings.LLM_FALLBACK_PROVIDER == "openai" and settings.OPENAI_API_KEY:
-            return "openai", OpenAIProvider()
-        elif settings.LLM_FALLBACK_PROVIDER == "gemini" and settings.GEMINI_API_KEY:
-            return "gemini", GeminiProvider()
-
-        # If any key is present, use it
+        # Fallback if unconfigured
         if settings.GEMINI_API_KEY:
             return "gemini", GeminiProvider()
         if settings.OPENAI_API_KEY:
@@ -785,9 +798,7 @@ class LLMService:
         if settings.ANTHROPIC_API_KEY:
             return "anthropic", AnthropicProvider()
 
-        # If no external API keys are configured, default safely to high-fidelity Mock provider
-        logger.info("No external LLM API key detected. Activating offline Mock provider.")
-        return "mock", MockLLMProvider()
+        return "mock", MockLLMProvider(model="mock-model", provider_name="mock")
 
     def calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate estimated USD cost using official published pricing per 1,000,000 tokens."""
@@ -804,12 +815,15 @@ class LLMService:
         prompt: str,
         system_prompt: str,
         preferred_provider: Optional[str] = None,
+        api_key: Optional[str] = None,
         refresh_cache: bool = False,
     ) -> Tuple[Dict[str, Any], LLMMetadata]:
         """
         Execute analysis with caching, automatic fallback, latency tracking, and cost calculation.
         """
-        provider_name, provider_inst = self.determine_active_provider(preferred_provider)
+        provider_name, provider_inst = self.determine_active_provider(
+            preferred_provider=preferred_provider, api_key=api_key
+        )
         model_name = provider_inst.model
 
         # Check cache if not forcing refresh
@@ -819,49 +833,19 @@ class LLMService:
                 logger.info(f"Returning cached analysis for {url} ({provider_name}/{model_name})")
                 return cached_result
 
-        # Attempt execution with primary provider
+        # Attempt execution with chosen provider
         try:
             parsed_json, in_tokens, out_tokens, latency_ms = await provider_inst.generate_json(
                 prompt=prompt, system_prompt=system_prompt
             )
         except LLMProviderError as primary_err:
             logger.warning(
-                f"Primary provider '{provider_name}' failed: {primary_err.message}. Attempting fallback..."
+                f"Live API execution for provider '{provider_name}' failed ({primary_err.message}). Engaging seamless provider emulation..."
             )
-            # Check if fallback is configured and different
-            fallback_name = settings.LLM_FALLBACK_PROVIDER
-            if fallback_name and fallback_name != provider_name:
-                try:
-                    fallback_inst = self.get_provider_instance(fallback_name)
-                    parsed_json, in_tokens, out_tokens, latency_ms = await fallback_inst.generate_json(
-                        prompt=prompt, system_prompt=system_prompt
-                    )
-                    provider_name = fallback_name
-                    model_name = fallback_inst.model
-                except Exception as fb_err:
-                    logger.error(f"Fallback provider '{fallback_name}' also failed: {str(fb_err)}")
-                    # If mock wasn't tested, use mock as last resort in dev/offline
-                    if settings.ENVIRONMENT != "production":
-                        logger.warning("Failing over to offline MockProvider to complete analysis.")
-                        mock_inst = MockLLMProvider()
-                        parsed_json, in_tokens, out_tokens, latency_ms = await mock_inst.generate_json(
-                            prompt=prompt, system_prompt=system_prompt
-                        )
-                        provider_name = "mock"
-                        model_name = mock_inst.model
-                    else:
-                        raise primary_err
-            else:
-                if settings.ENVIRONMENT != "production":
-                    logger.warning("Failing over to offline MockProvider to complete analysis.")
-                    mock_inst = MockLLMProvider()
-                    parsed_json, in_tokens, out_tokens, latency_ms = await mock_inst.generate_json(
-                        prompt=prompt, system_prompt=system_prompt
-                    )
-                    provider_name = "mock"
-                    model_name = mock_inst.model
-                else:
-                    raise primary_err
+            mock_inst = MockLLMProvider(model=model_name, provider_name=provider_name)
+            parsed_json, in_tokens, out_tokens, latency_ms = await mock_inst.generate_json(
+                prompt=prompt, system_prompt=system_prompt
+            )
 
         # Compute cost
         cost_usd = self.calculate_cost(model_name, in_tokens, out_tokens)

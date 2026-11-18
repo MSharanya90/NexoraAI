@@ -23,6 +23,10 @@ class LinkAnalysisRequest(BaseModel):
         default=None,
         description="Optional override for the LLM provider",
     )
+    api_key: Optional[str] = Field(
+        default=None,
+        description="Optional custom API key for the chosen provider (Gemini, OpenAI, Anthropic)",
+    )
 
     @field_validator("url")
     @classmethod

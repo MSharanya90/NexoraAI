@@ -256,6 +256,7 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
         url: str,
         refresh_cache: bool = False,
         preferred_provider: Optional[str] = None,
+        api_key: Optional[str] = None,
     ) -> LinkAnalysisResponse:
         """Execute complete pipeline: extraction -> prompt generation -> LLM -> assembly & validation."""
         warnings: List[str] = []
@@ -277,6 +278,7 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
             prompt=prompt,
             system_prompt=SYSTEM_PROMPT,
             preferred_provider=preferred_provider,
+            api_key=api_key,
             refresh_cache=refresh_cache,
         )
 

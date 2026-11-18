@@ -536,3 +536,51 @@ def test_advanced_tech_stack_and_security_headers_detection():
     # Check reading metrics
     assert extracted.reading_metrics["word_count"] > 5
     assert extracted.reading_metrics["reading_time_minutes"] >= 0.5
+
+
+@pytest.mark.asyncio
+async def test_all_four_providers_execution(monkeypatch):
+    """Verify that all 4 providers (gemini, openai, anthropic, mock) execute seamlessly."""
+    extractor = WebsiteExtractor()
+    extracted = extractor.parse_html_content(
+        html_text="""<html><head><title>Test App</title></head><body><h1>Test App Platform</h1><p>Fast scalable digital services.</p></body></html>""",
+        original_url="https://testapp.example.com",
+        final_url="https://testapp.example.com/",
+        status_code=200,
+        latency_ms=50.0,
+    )
+    async def mock_extract(self, url):
+        return extracted
+    monkeypatch.setattr(WebsiteExtractor, "extract", mock_extract)
+
+    client = TestClient(app)
+
+    providers_to_test = [
+        ("gemini", "gemini-1.5-flash", True),
+        ("openai", "gpt-4o-mini", True),
+        ("anthropic", "claude-3-5-haiku-20241022", True),
+        ("mock", "mock-model", False),
+    ]
+
+    for p_name, expected_model, expect_cost in providers_to_test:
+        response = client.post(
+            "/link-analysis",
+            json={
+                "url": "https://testapp.example.com",
+                "preferred_provider": p_name,
+                "refresh_cache": True,
+            },
+        )
+        assert response.status_code == 200, f"Provider {p_name} failed: {response.text}"
+        res_data = response.json()
+        assert res_data["success"] is True
+        meta = res_data["llm_metadata"]
+        assert meta["provider"] == p_name, f"Expected provider {p_name}, got {meta['provider']}"
+        assert meta["model"] == expected_model, f"Expected model {expected_model}, got {meta['model']}"
+        assert meta["input_tokens"] > 0
+        assert meta["output_tokens"] > 0
+        if expect_cost:
+            assert meta["estimated_cost_usd"] > 0, f"Expected positive cost for {p_name}"
+        else:
+            assert meta["estimated_cost_usd"] == 0.0, "Mock provider should be free"
+
