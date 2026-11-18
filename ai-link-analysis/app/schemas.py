@@ -69,6 +69,18 @@ class ExtractedWebsiteData(BaseModel):
         default_factory=list,
         description="Explicit service candidates discovered from schema.org JSON-LD, nav menus, or feature cards",
     )
+    detected_technologies: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="Detected web frameworks, CMS, analytics, payment gateways, and CDN infrastructure",
+    )
+    security_headers: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Audit of HTTPS, HSTS, CSP, and security header presence",
+    )
+    reading_metrics: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Word count, estimated reading time, and content-to-code ratio",
+    )
 
 
 # ============================================================================
@@ -89,6 +101,12 @@ class BrandInfo(BaseModel):
     competitive_advantages: List[str] = Field(
         default_factory=list, description="Core differentiators and USPs"
     )
+    swot_weaknesses: List[str] = Field(
+        default_factory=list, description="Identified organizational or market gaps"
+    )
+    swot_threats: List[str] = Field(
+        default_factory=list, description="External category and competitive threats"
+    )
 
 
 class CompetitorItem(BaseModel):
@@ -108,6 +126,24 @@ class CompetitorItem(BaseModel):
         ...,
         description="Source classification: website-derived, externally verified, or ai-generated suggestion",
     )
+    market_tier: Optional[str] = Field(
+        default="Direct Category Competitor",
+        description="Market tier (e.g. Enterprise Incumbent, High-Growth Challenger, Niche Specialist, Low-Cost Alternative)",
+    )
+    pricing_tier: Optional[str] = Field(
+        default=None,
+        description="Competitor pricing model (e.g. Premium Enterprise, Freemium / Self-Serve, Custom Sales Quote)",
+    )
+    overlap_score: float = Field(
+        default=0.85,
+        ge=0.0,
+        le=1.0,
+        description="Estimated capability overlap with target brand (0.0 to 1.0)",
+    )
+    differentiation_angle: Optional[str] = Field(
+        default=None,
+        description="Core winning battlecard wedge against this competitor",
+    )
 
 
 class CompetitorAnalysis(BaseModel):
@@ -124,6 +160,10 @@ class CompetitorAnalysis(BaseModel):
     opportunities: List[str] = Field(
         default_factory=list, description="Strategic market opportunities"
     )
+    swot_matrix: Dict[str, List[str]] = Field(
+        default_factory=lambda: {"strengths": [], "weaknesses": [], "opportunities": [], "threats": []},
+        description="Complete 4-quadrant SWOT matrix for the target brand",
+    )
 
 
 class SearchQueryItem(BaseModel):
@@ -137,6 +177,18 @@ class SearchQueryItem(BaseModel):
     search_volume_status: str = Field(
         default="Unavailable (quantitative metrics require 3rd-party provider integration)",
         description="Explicit note stating quantitative search volumes are not fabricated",
+    )
+    serp_target_feature: Optional[str] = Field(
+        default=None,
+        description="Recommended search feature to target (e.g. Featured Snippet, People Also Ask, Knowledge Panel, Local Pack)",
+    )
+    suggested_content_format: Optional[str] = Field(
+        default=None,
+        description="Optimal content asset format (e.g. Comparison Matrix, Technical Tutorial, In-depth Guide, Customer Story)",
+    )
+    social_activation_hook: Optional[str] = Field(
+        default=None,
+        description="Platform-specific angle, hashtag strategy, or discussion hook for social platforms",
     )
 
 
@@ -178,6 +230,23 @@ class SEOImprovements(BaseModel):
     meta_description_improvement_reason: Optional[str] = None
     supporting_content: List[SupportingContentItem] = Field(default_factory=list)
     technical_issues: List[TechnicalIssueItem] = Field(default_factory=list)
+    seo_health_score: int = Field(
+        default=85,
+        ge=0,
+        le=100,
+        description="Algorithmic Technical SEO Health Score (0-100) based on verified DOM indicators",
+    )
+    schema_markup_jsonld: Optional[str] = Field(
+        default=None,
+        description="Ready-to-use Schema.org JSON-LD structured data string for the brand",
+    )
+    topic_cluster: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "pillar_page": "Complete Industry Guide & Architecture",
+            "cluster_subtopics": [],
+        },
+        description="Pillar and cluster content architecture for topical authority",
+    )
 
 
 class ServiceItem(BaseModel):
@@ -217,6 +286,14 @@ class ServiceItem(BaseModel):
         default=None,
         description="Where on the website the evidence was identified (e.g. Primary Navigation, Hero Section, Solutions Grid)",
     )
+    maturity_stage: Optional[str] = Field(
+        default="Core Flagship",
+        description="Product maturity stage (e.g. Core Flagship, Enterprise Extension, Emerging Capability, Add-on)",
+    )
+    estimated_roi_benefit: Optional[str] = Field(
+        default=None,
+        description="Quantifiable or strategic business ROI benefit for the customer",
+    )
 
 
 class AudienceSegmentItem(BaseModel):
@@ -242,6 +319,22 @@ class TargetAudience(BaseModel):
     customer_pain_points: List[str] = Field(default_factory=list)
     potential_interests: List[str] = Field(default_factory=list)
     audience_segments: List[AudienceSegmentItem] = Field(default_factory=list)
+    icp_firmographics: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "company_size": "10-500 employees",
+            "revenue_stage": "Growth / Scaled",
+            "tech_stack_requirements": "Modern Cloud Architecture",
+        },
+        description="Ideal Customer Profile firmographics",
+    )
+    jobs_to_be_done: Dict[str, List[str]] = Field(
+        default_factory=lambda: {
+            "functional_jobs": [],
+            "emotional_jobs": [],
+            "social_jobs": [],
+        },
+        description="Jobs-to-be-Done (JTBD) customer framework",
+    )
 
 
 # ============================================================================
@@ -255,6 +348,10 @@ class AnalysisContainer(BaseModel):
     seo_improvements: SEOImprovements
     top_services: List[ServiceItem] = Field(..., min_length=1, max_length=5)
     target_audience: TargetAudience
+    technical_audit: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Comprehensive technical diagnostics including tech stack, security headers, and reading metrics",
+    )
 
 
 class ExtractionSummary(BaseModel):
@@ -263,6 +360,9 @@ class ExtractionSummary(BaseModel):
     meta_description: str = ""
     pages_analyzed: int = 1
     content_length: int = 0
+    seo_score: int = 85
+    detected_technologies_count: int = 0
+    reading_time_minutes: float = 2.0
 
 
 class LLMMetadata(BaseModel):

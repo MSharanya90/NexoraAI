@@ -822,4 +822,198 @@ body {
   .compare-grid {
     grid-template-columns: 1fr;
   }
+  .swot-grid {
+    grid-template-columns: 1fr;
+  }
+  .jtbd-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+   ADVANCED MODULES STYLING
+   ============================================================================ */
+
+/* SWOT Matrix */
+.swot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.swot-card {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--slate-200);
+}
+
+.swot-card.strengths {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.swot-card.weaknesses {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.swot-card.opportunities {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.swot-card.threats {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.swot-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.swot-card.strengths .swot-title { color: #166534; }
+.swot-card.weaknesses .swot-title { color: #991b1b; }
+.swot-card.opportunities .swot-title { color: #1e40af; }
+.swot-card.threats .swot-title { color: #92400e; }
+
+.swot-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.swot-list li {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--slate-700);
+  padding-left: 14px;
+  position: relative;
+}
+.swot-card.strengths .swot-list li::before { content: "✓"; position: absolute; left: 0; color: #16a34a; font-weight: bold; }
+.swot-card.weaknesses .swot-list li::before { content: "•"; position: absolute; left: 0; color: #dc2626; font-weight: bold; font-size: 1.2rem; line-height: 1; }
+.swot-card.opportunities .swot-list li::before { content: "★"; position: absolute; left: 0; color: #2563eb; font-size: 0.8rem; }
+.swot-card.threats .swot-list li::before { content: "▲"; position: absolute; left: 0; color: #d97706; font-size: 0.75rem; }
+
+/* Battlecard Grid */
+.battlecard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.battlecard-card {
+  background: #ffffff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.battlecard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.battlecard-wedge {
+  background: #f8fafc;
+  border-left: 3px solid var(--primary);
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--slate-800);
+}
+
+/* Topic Cluster Architecture */
+.topic-cluster-container {
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin-top: 20px;
+}
+.pillar-card {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  color: #ffffff;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+}
+.cluster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.cluster-item {
+  background: #ffffff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-size: 0.85rem;
+}
+
+/* Code Snippet Box */
+.code-snippet-box {
+  background: #0f172a;
+  color: #f1f5f9;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  overflow-x: auto;
+  position: relative;
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* Tech Stack Pills */
+.tech-stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.tech-card {
+  background: #ffffff;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+}
+
+/* JTBD Framework */
+.jtbd-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+.jtbd-card {
+  background: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+/* SEO Health Meter */
+.seo-meter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.95rem;
 }

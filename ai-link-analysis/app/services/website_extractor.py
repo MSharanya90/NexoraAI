@@ -150,7 +150,8 @@ class WebsiteExtractor:
                     )
 
                 html_text = response.text
-                return html_text, str(response.url), response.status_code, latency_ms
+                resp_headers = {k.lower(): str(v) for k, v in response.headers.items()}
+                return html_text, str(response.url), response.status_code, latency_ms, resp_headers
 
             raise WebsiteExtractionError(
                 f"Exceeded maximum redirect limit of {self.max_redirects} hops",
@@ -164,6 +165,7 @@ class WebsiteExtractor:
         final_url: str,
         status_code: int,
         latency_ms: float,
+        headers: Optional[Dict[str, str]] = None,
     ) -> ExtractedWebsiteData:
         """
         Parse raw HTML using BeautifulSoup4 into strongly structured extraction metadata.
@@ -267,6 +269,11 @@ class WebsiteExtractor:
             images_missing_alt=images_missing_alt,
         )
 
+        # 13. Advanced Tech Stack, Security Headers, and Reading Metrics
+        detected_technologies = self._detect_technologies(soup, html_text, headers or {})
+        security_headers = self._detect_security_headers(headers or {}, final_url)
+        reading_metrics = self._calculate_reading_metrics(main_text, html_text)
+
         return ExtractedWebsiteData(
             original_url=original_url,
             final_url=final_url,
@@ -291,6 +298,9 @@ class WebsiteExtractor:
             extraction_latency_ms=latency_ms,
             detected_technical_issues=technical_issues,
             structured_service_candidates=structured_service_candidates,
+            detected_technologies=detected_technologies,
+            security_headers=security_headers,
+            reading_metrics=reading_metrics,
         )
 
     def _extract_structured_services(self, soup: BeautifulSoup, final_url: str) -> List[Dict[str, Any]]:
@@ -628,13 +638,128 @@ class WebsiteExtractor:
 
         return issues
 
+    def _detect_technologies(
+        self, soup: BeautifulSoup, html_text: str, headers: Dict[str, str]
+    ) -> List[Dict[str, str]]:
+        """Identify frameworks, CMS platforms, analytics, CDN, and payment systems."""
+        techs: List[Dict[str, str]] = []
+        html_lower = html_text.lower()
+
+        def add_tech(name: str, category: str, confidence: str = "High"):
+            if not any(t["name"] == name for t in techs):
+                techs.append({"name": name, "category": category, "confidence": confidence})
+
+        # Frameworks & Libraries
+        if "__next_data__" in html_lower or "/_next/" in html_lower:
+            add_tech("Next.js", "Web Framework")
+            add_tech("React", "Frontend Library")
+        elif "data-reactroot" in html_lower or "react" in html_lower:
+            add_tech("React", "Frontend Library")
+
+        if "__nuxt__" in html_lower or "/_nuxt/" in html_lower:
+            add_tech("Nuxt.js", "Web Framework")
+            add_tech("Vue.js", "Frontend Library")
+        elif "vue" in html_lower:
+            add_tech("Vue.js", "Frontend Library")
+
+        if "ng-version" in html_lower or "ng-app" in html_lower:
+            add_tech("Angular", "Web Framework")
+
+        # CMS & Site Builders
+        if "wp-content" in html_lower or "wp-includes" in html_lower:
+            add_tech("WordPress", "Content Management System (CMS)")
+        if "cdn.shopify.com" in html_lower or "shopify.theme" in html_lower:
+            add_tech("Shopify", "E-commerce Platform")
+        if "data-wf-page" in html_lower or "webflow" in html_lower:
+            add_tech("Webflow", "No-code Website Builder")
+        if "squarespace" in html_lower:
+            add_tech("Squarespace", "CMS / Site Builder")
+
+        # UI & Styling
+        if "tailwind" in html_lower:
+            add_tech("Tailwind CSS", "CSS Framework")
+        if "bootstrap" in html_lower:
+            add_tech("Bootstrap", "CSS Framework")
+        if "fontawesome" in html_lower or "fa-" in html_lower:
+            add_tech("FontAwesome", "Icon Font Library")
+
+        # Analytics & Tag Management
+        if "googletagmanager.com/gtm.js" in html_lower:
+            add_tech("Google Tag Manager", "Tag Management")
+        if "google-analytics.com" in html_lower or "gtag(" in html_lower or "ga(" in html_lower:
+            add_tech("Google Analytics (GA4)", "Analytics & Telemetry")
+        if "connect.facebook.net" in html_lower:
+            add_tech("Meta (Facebook) Pixel", "Conversion Tracking")
+        if "segment.com/analytics.js" in html_lower:
+            add_tech("Segment", "Customer Data Platform (CDP)")
+        if "hotjar.com" in html_lower:
+            add_tech("Hotjar", "User Behavior Analytics")
+
+        # Payments & Commerce
+        if "js.stripe.com" in html_lower or "stripe" in html_lower:
+            add_tech("Stripe Payments", "Payment Gateway")
+        if "paypal.com" in html_lower:
+            add_tech("PayPal", "Payment Gateway")
+
+        # Infrastructure / CDN
+        server_hdr = headers.get("server", "").lower()
+        if "cloudflare" in server_hdr or "cf-ray" in headers:
+            add_tech("Cloudflare", "CDN & Security Proxy")
+        elif "vercel" in server_hdr or "x-vercel-id" in headers:
+            add_tech("Vercel Edge Network", "Cloud Hosting & CDN")
+        elif "netlify" in server_hdr:
+            add_tech("Netlify", "Cloud Hosting & CDN")
+        elif "cloudfront" in server_hdr or "x-amz-cf-id" in headers:
+            add_tech("Amazon CloudFront", "Content Delivery Network (CDN)")
+        elif "nginx" in server_hdr:
+            add_tech("NGINX", "Web Server")
+
+        if not techs:
+            add_tech("Modern HTML5 / ES6+", "Client Runtime")
+
+        return techs[:12]
+
+    def _detect_security_headers(self, headers: Dict[str, str], final_url: str) -> Dict[str, str]:
+        """Audit security and privacy headers."""
+        return {
+            "https_enforced": "PASS" if final_url.startswith("https://") else "FAIL",
+            "hsts": "PASS" if "strict-transport-security" in headers else "MISSING",
+            "content_security_policy": "PASS" if "content-security-policy" in headers else "MISSING",
+            "x_frame_options": "PASS" if "x-frame-options" in headers else "MISSING",
+            "x_content_type_options": "PASS" if "x-content-type-options" in headers else "MISSING",
+            "referrer_policy": "PASS" if "referrer-policy" in headers else "MISSING",
+        }
+
+    def _calculate_reading_metrics(self, main_text: str, html_text: str) -> Dict[str, Any]:
+        """Compute content volume, readability metrics, and content-to-code ratio."""
+        words = main_text.split()
+        word_count = len(words)
+        reading_time_min = max(0.5, round(word_count / 200.0, 1))
+        content_bytes = len(main_text.encode("utf-8"))
+        total_html_bytes = max(1, len(html_text.encode("utf-8")))
+        content_ratio = round((content_bytes / total_html_bytes) * 100, 1)
+
+        return {
+            "word_count": word_count,
+            "reading_time_minutes": reading_time_min,
+            "content_to_html_ratio_pct": content_ratio,
+            "paragraphs_count": len([p for p in main_text.split("\n\n") if p.strip()]),
+        }
+
     async def extract(self, url: str) -> ExtractedWebsiteData:
         """Execute complete secure fetch and extraction pipeline."""
-        html_text, final_url, status_code, latency_ms = await self.fetch_html_securely(url)
+        fetch_res = await self.fetch_html_securely(url)
+        if len(fetch_res) >= 5:
+            html_text, final_url, status_code, latency_ms, resp_headers = fetch_res[:5]
+        else:
+            html_text, final_url, status_code, latency_ms = fetch_res[:4]
+            resp_headers = {}
+
         return self.parse_html_content(
             html_text=html_text,
             original_url=url,
             final_url=final_url,
             status_code=status_code,
             latency_ms=latency_ms,
+            headers=resp_headers,
         )

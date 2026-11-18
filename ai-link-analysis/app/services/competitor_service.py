@@ -98,6 +98,10 @@ class CompetitorService:
                     comparison_with_brand=comp.get("comparison_with_brand", f"Competes directly with {brand_name} for industry market share."),
                     competitive_opportunities=comp.get("competitive_opportunities") or [f"Differentiate on agility and transparency vs {name}"],
                     verification_status=status,
+                    market_tier=comp.get("market_tier") or ("Enterprise Incumbent" if len(sanitized) == 0 else "High-Growth Challenger"),
+                    pricing_tier=comp.get("pricing_tier") or ("Custom Enterprise SLA" if len(sanitized) == 0 else "Tiered SaaS"),
+                    overlap_score=float(comp.get("overlap_score") or (0.92 - (len(sanitized) * 0.08))),
+                    differentiation_angle=comp.get("differentiation_angle") or f"Highlight faster time-to-value and flexible contract terms compared to {name}.",
                 )
             )
 
@@ -105,7 +109,8 @@ class CompetitorService:
         if len(sanitized) < 3:
             needed = 3 - len(sanitized)
             for i in range(1, needed + 1):
-                placeholder_name = f"Industry Competitor #{len(sanitized) + 1} ({brand_name} Alternative)"
+                idx = len(sanitized) + 1
+                placeholder_name = f"Industry Competitor #{idx} ({brand_name} Alternative)"
                 sanitized.append(
                     CompetitorItem(
                         competitor_name=placeholder_name,
@@ -117,10 +122,61 @@ class CompetitorService:
                         comparison_with_brand=f"Offers parallel service capabilities to {brand_name}.",
                         competitive_opportunities=["Target specific underserved customer niches with superior user experience"],
                         verification_status="ai-generated suggestion",
+                        market_tier="Niche Specialist" if idx == 3 else "High-Growth Challenger",
+                        pricing_tier="Freemium / Self-Serve",
+                        overlap_score=0.74,
+                        differentiation_angle=f"Deliver superior enterprise security standards and broader integrations than {placeholder_name}.",
                     )
                 )
 
         return sanitized[:5]
+
+    def build_swot_matrix(
+        self,
+        brand_name: str,
+        brand_strengths: List[str],
+        competitors: List[CompetitorItem],
+        extracted: ExtractedWebsiteData,
+    ) -> Dict[str, List[str]]:
+        """Construct a rigorous 4-quadrant SWOT matrix for the target brand."""
+        strengths = list(brand_strengths) or [
+            f"Direct self-service digital access across {brand_name} offerings",
+            "Clear modern landing architecture with fast technical rendering",
+            "Specialized focus on high-efficiency commercial workflows",
+        ]
+
+        # Weaknesses from DOM diagnostics
+        weaknesses = []
+        if extracted.images_missing_alt > 0:
+            weaknesses.append("Accessibility and image SEO gaps due to missing alt tags")
+        if not extracted.meta_description or len(extracted.meta_description) < 60:
+            weaknesses.append("Under-optimized meta tags reducing organic SERP click-through rates")
+        if len(extracted.navigation_links) < 3:
+            weaknesses.append("Narrow visible site navigation architecture limiting discovery")
+        if not weaknesses:
+            weaknesses.append("Absence of transparent self-service pricing documentation on homepage")
+            weaknesses.append("Limited publicly visible technical integration documentation")
+
+        # Opportunities
+        opportunities = [
+            f"Capture competitor alternative search traffic targeting {competitors[0].competitor_name if competitors else 'category incumbents'}",
+            "Deploy targeted industry-specific landing pages to improve organic discovery",
+            "Introduce interactive ROI calculators and self-guided product walkthroughs",
+        ]
+
+        # Threats
+        threats = [
+            f"Aggressive feature duplication from well-funded rivals like {competitors[0].competitor_name if competitors else 'market leaders'}",
+            "Rapid commoditization of standard workflow automation features",
+            "Elevated customer acquisition costs in competitive paid search channels",
+        ]
+
+        return {
+            "strengths": strengths[:4],
+            "weaknesses": weaknesses[:4],
+            "opportunities": opportunities[:4],
+            "threats": threats[:4],
+        }
 
 
 competitor_service = CompetitorService()

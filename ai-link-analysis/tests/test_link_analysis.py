@@ -444,3 +444,95 @@ def test_endpoint_link_analysis_success_mocked(mock_fetch, mock_dns):
     assert "llm_metadata" in data
     assert "estimated_cost_usd" in data["llm_metadata"]
     assert "latency_ms" in data["llm_metadata"]
+
+    # Advanced Features Verification
+    # A. SWOT Matrix
+    assert "swot_matrix" in analysis["competitor_analysis"]
+    swot = analysis["competitor_analysis"]["swot_matrix"]
+    assert "strengths" in swot and "weaknesses" in swot and "opportunities" in swot and "threats" in swot
+    assert len(swot["strengths"]) > 0
+
+    # B. Competitor Battlecards
+    for comp in comps:
+        assert "market_tier" in comp
+        assert "overlap_score" in comp
+        assert "differentiation_angle" in comp
+
+    # C. Advanced Search Query Platform Syntax
+    for q in queries:
+        assert "serp_target_feature" in q
+        assert "suggested_content_format" in q
+        assert "social_activation_hook" in q
+
+    # D. SEO Health Score & Schema Markup
+    assert "seo_health_score" in seo
+    assert 0 <= seo["seo_health_score"] <= 100
+    assert "schema_markup_jsonld" in seo
+    assert "topic_cluster" in seo
+    assert "pillar_page" in seo["topic_cluster"]
+
+    # E. Service Maturity & Estimated ROI
+    for s in services:
+        assert "maturity_stage" in s
+        assert "estimated_roi_benefit" in s
+
+    # F. Audience ICP & Jobs to Be Done
+    assert "icp_firmographics" in audience
+    assert "jobs_to_be_done" in audience
+    assert "functional_jobs" in audience["jobs_to_be_done"]
+
+    # G. Technical Audit in Extraction & Container
+    assert "seo_score" in data["extraction"]
+    assert "technical_audit" in analysis
+    tech_audit = analysis["technical_audit"]
+    assert "detected_technologies" in tech_audit
+    assert "security_headers" in tech_audit
+
+
+def test_advanced_tech_stack_and_security_headers_detection():
+    """Verify that WebExtractor identifies Next.js, React, Tailwind, Stripe, and security headers."""
+    html = """<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Fintech SaaS</title>
+        <script id="__NEXT_DATA__">{"props":{}}</script>
+        <script src="https://js.stripe.com/v3/"></script>
+        <script src="https://www.googletagmanager.com/gtm.js?id=GTM-123"></script>
+    </head>
+    <body class="bg-gray-100 font-sans tailwind">
+        <h1>Modern Payments Platform</h1>
+        <p>Enterprise grade payment APIs and automated financial workflows for global scale.</p>
+    </body>
+    </html>"""
+
+    headers = {
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "content-security-policy": "default-src 'self'",
+        "x-frame-options": "DENY",
+        "server": "cloudflare",
+    }
+
+    extractor = WebsiteExtractor()
+    extracted = extractor.parse_html_content(
+        html_text=html,
+        original_url="https://fintech.example.com",
+        final_url="https://fintech.example.com/",
+        status_code=200,
+        latency_ms=80.0,
+        headers=headers,
+    )
+
+    detected_names = [t["name"] for t in extracted.detected_technologies]
+    assert "Next.js" in detected_names or "React" in detected_names
+    assert "Stripe Payments" in detected_names
+    assert "Google Tag Manager" in detected_names
+    assert "Cloudflare" in detected_names
+
+    # Check security headers audit
+    assert extracted.security_headers["hsts"] == "PASS"
+    assert extracted.security_headers["content_security_policy"] == "PASS"
+    assert extracted.security_headers["x_frame_options"] == "PASS"
+
+    # Check reading metrics
+    assert extracted.reading_metrics["word_count"] > 5
+    assert extracted.reading_metrics["reading_time_minutes"] >= 0.5

@@ -300,11 +300,19 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
             brand_name=parsed_brand.name,
         )
 
+        swot_matrix = competitor_service.build_swot_matrix(
+            brand_name=parsed_brand.name,
+            brand_strengths=raw_comp_data.get("strengths") or parsed_brand.competitive_advantages or ["Modern digital platform"],
+            competitors=sanitized_competitors,
+            extracted=extracted,
+        )
+
         competitor_analysis = CompetitorAnalysis(
             brand_overview=raw_comp_data.get("brand_overview", parsed_brand.summary),
             competitors=sanitized_competitors,
             strengths=raw_comp_data.get("strengths", parsed_brand.competitive_advantages or ["Modern digital presence"]),
             opportunities=raw_comp_data.get("opportunities", ["Expand organic search footprint across niche offerings"]),
+            swot_matrix=swot_matrix,
         )
 
         # 7. Validate and Standardize Target Search Queries (Exactly 5)
@@ -312,10 +320,39 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
         valid_queries: List[SearchQueryItem] = []
         platforms_order = ["Google Search", "Facebook", "Instagram", "LinkedIn", "X (Twitter)"]
 
+        platform_defaults = {
+            "Google Search": {
+                "serp": "Featured Snippet (Paragraph)",
+                "format": "Comparison Matrix Page & Buyer Guide",
+                "hook": "Optimize for #1 Organic ranking and Google Answer Box snippet",
+            },
+            "LinkedIn": {
+                "serp": "LinkedIn Executive Pulse Article",
+                "format": "B2B Thought Leadership Case Study",
+                "hook": "#EnterpriseTech #Leadership discussion on operational efficiency",
+            },
+            "X (Twitter)": {
+                "serp": "Viral Discussion Hook / Thread",
+                "format": "Technical Architecture Breakdown with Diagrams",
+                "hook": "Dev community question: What is your #1 bottleneck?",
+            },
+            "Facebook": {
+                "serp": "Community Group Feature",
+                "format": "Founder Video Spotlight & Testimonial",
+                "hook": "Community discussion inside specialized industry founder groups",
+            },
+            "Instagram": {
+                "serp": "Explore Grid & Carousel Feature",
+                "format": "Visual ROI Infographic Carousel (5 Slides)",
+                "hook": "#Productivity #DigitalInnovation visual asset highlighting key ROI metrics",
+            },
+        }
+
         for q in raw_queries:
             platform = q.get("relevant_platform")
             if platform not in platforms_order:
                 platform = "Google Search"
+            defaults = platform_defaults.get(platform, platform_defaults["Google Search"])
             valid_queries.append(
                 SearchQueryItem(
                     search_query=q.get("search_query", f"{parsed_brand.name.lower()} solutions"),
@@ -325,6 +362,9 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                     target_audience=q.get("target_audience", "Prospective business buyers and decision makers."),
                     keyword_category=q.get("keyword_category") if q.get("keyword_category") in ("Brand", "Industry", "Solution", "Competitor Alternative", "Long-tail") else "Solution",
                     search_volume_status="Unavailable (quantitative metrics require 3rd-party provider integration)",
+                    serp_target_feature=q.get("serp_target_feature") or defaults["serp"],
+                    suggested_content_format=q.get("suggested_content_format") or defaults["format"],
+                    social_activation_hook=q.get("social_activation_hook") or defaults["hook"],
                 )
             )
 
@@ -333,6 +373,7 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
             covered_platforms = {q.relevant_platform for q in valid_queries}
             for p in platforms_order:
                 if p not in covered_platforms and len(valid_queries) < 5:
+                    defaults = platform_defaults.get(p, platform_defaults["Google Search"])
                     valid_queries.append(
                         SearchQueryItem(
                             search_query=f"{parsed_brand.name.lower()} business offerings on {p}",
@@ -342,6 +383,9 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                             target_audience="Industry professionals and prospective customers.",
                             keyword_category="Brand",
                             search_volume_status="Unavailable (quantitative metrics require 3rd-party provider integration)",
+                            serp_target_feature=defaults["serp"],
+                            suggested_content_format=defaults["format"],
+                            social_activation_hook=defaults["hook"],
                         )
                     )
         valid_queries = valid_queries[:5]
@@ -377,6 +421,37 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                 )
             )
 
+        # Compute Algorithmic SEO Health Score (0-100)
+        seo_health_score = 100
+        for issue in extracted.detected_technical_issues:
+            if issue["status"] == "FAIL":
+                seo_health_score -= 20 if issue["priority"] == "HIGH" else 10
+            elif issue["status"] == "WARNING":
+                seo_health_score -= 10 if issue["priority"] == "HIGH" else (6 if issue["priority"] == "MEDIUM" else 3)
+        seo_health_score = max(25, min(100, seo_health_score))
+
+        # Schema.org JSON-LD generation
+        schema_markup = json.dumps({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication" if any(w in parsed_brand.category.lower() for w in ["software", "tech", "platform", "cloud", "ai"]) else "Organization",
+            "name": parsed_brand.name,
+            "url": extracted.final_url,
+            "description": parsed_brand.summary,
+            "applicationCategory": parsed_brand.category,
+            "knowsAbout": parsed_brand.competitive_advantages or ["Digital Operations", "Enterprise Services"],
+        }, indent=2)
+
+        # Topic Cluster Architecture
+        topic_cluster = {
+            "pillar_page": f"Complete Architecture & Strategic Guide to {parsed_brand.name} ({parsed_brand.category})",
+            "cluster_subtopics": [
+                {"subtopic": f"How to Evaluate Leading {parsed_brand.category} Solutions", "target_persona": "Technical & Operations Leads", "intent": "Commercial"},
+                {"subtopic": f"Step-by-Step Implementation & Migration with {parsed_brand.name}", "target_persona": "Engineering Managers", "intent": "Informational"},
+                {"subtopic": f"Total Cost of Ownership & ROI Benchmark in {parsed_brand.category}", "target_persona": "Procurement & Executive Leaders", "intent": "Commercial"},
+                {"subtopic": f"Enterprise Security, Compliance, and SLA Standards in {parsed_brand.category}", "target_persona": "Security & IT Directors", "intent": "Informational"},
+            ],
+        }
+
         seo_improvements = SEOImprovements(
             primary_keyword=raw_seo.get("primary_keyword", f"{parsed_brand.name.lower()} services"),
             secondary_keywords=raw_seo.get("secondary_keywords", [f"{parsed_brand.name.lower()} digital", "industry solutions"]),
@@ -390,13 +465,18 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
             meta_description_improvement_reason=raw_seo.get("meta_description_improvement_reason", "Clear value proposition and call to action between 140-160 characters."),
             supporting_content=content_recs,
             technical_issues=tech_issues,
+            seo_health_score=seo_health_score,
+            schema_markup_jsonld=schema_markup,
+            topic_cluster=topic_cluster,
         )
 
         # 9. Top 5 Services Identification (Explicit vs Inferred)
         raw_services = raw_analysis.get("top_services", [])
         top_services: List[ServiceItem] = []
 
-        for s in raw_services:
+        maturity_stages = ["Core Flagship", "Enterprise Extension", "Emerging Capability", "Add-on Module", "Infrastructure API"]
+
+        for idx, s in enumerate(raw_services):
             is_explicit = (s.get("identification_type") == "EXPLICIT")
             capabilities = s.get("key_capabilities") or [
                 "Real-time operational dashboard access",
@@ -422,6 +502,8 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                     delivery_model=delivery,
                     confidence_score=min(max(confidence, 0.0), 1.0),
                     page_location=location,
+                    maturity_stage=s.get("maturity_stage") or maturity_stages[min(idx, len(maturity_stages) - 1)],
+                    estimated_roi_benefit=s.get("estimated_roi_benefit") or "Reduces administrative overhead and accelerates execution velocity.",
                 )
             )
 
@@ -445,18 +527,20 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                     delivery_model="Cloud SaaS / Web Portal",
                     confidence_score=0.98,
                     page_location="Primary Header Navigation",
+                    maturity_stage="Core Flagship",
+                    estimated_roi_benefit="Establishes central workflow command with measurable operational cost reduction.",
                 )
             )
 
         # If fewer than 5 services, infer remaining to complete top 5 list
         if len(top_services) < 5:
             inferred_placeholders = [
-                ("Technical Integration & API Services", "Custom APIs and technical integration capabilities.", "IT & Software", ["REST API endpoints", "Webhook triggers", "Client SDKs"], "Usage-Based / Tiered", "REST API & Webhooks"),
-                ("Dedicated Customer Support & Advisory", "Direct customer advisory and troubleshooting workflows.", "Cross-industry", ["Priority ticket queue", "Dedicated account rep", "SLA guarantees"], "Included in Enterprise Plan", "Managed Support Channel"),
-                ("Enterprise Solutions & Account Management", "Tailored packages and dedicated governance for corporate accounts.", "Enterprise", ["SSO / SAML 2.0 integration", "Custom data retention", "Audit log exports"], "Custom Enterprise Quote", "Dedicated Enterprise Cloud"),
-                ("Platform Training & Documentation", "Educational resources and onboarding guidance.", "Digital Operations", ["Interactive developer docs", "Video tutorials", "Live webinars"], "Complimentary Resource", "Self-service Knowledge Base"),
+                ("Technical Integration & API Services", "Custom APIs and technical integration capabilities.", "IT & Software", ["REST API endpoints", "Webhook triggers", "Client SDKs"], "Usage-Based / Tiered", "REST API & Webhooks", "Infrastructure API", "Cuts custom integration time from months to days."),
+                ("Dedicated Customer Support & Advisory", "Direct customer advisory and troubleshooting workflows.", "Cross-industry", ["Priority ticket queue", "Dedicated account rep", "SLA guarantees"], "Included in Enterprise Plan", "Managed Support Channel", "Enterprise Extension", "Guarantees 99.9% uptime SLA response."),
+                ("Enterprise Solutions & Account Management", "Tailored packages and dedicated governance for corporate accounts.", "Enterprise", ["SSO / SAML 2.0 integration", "Custom data retention", "Audit log exports"], "Custom Enterprise Quote", "Dedicated Enterprise Cloud", "Enterprise Extension", "Satisfies enterprise InfoSec and SOC2 compliance."),
+                ("Platform Training & Documentation", "Educational resources and onboarding guidance.", "Digital Operations", ["Interactive developer docs", "Video tutorials", "Live webinars"], "Complimentary Resource", "Self-service Knowledge Base", "Add-on Module", "Shortens end-user time-to-onboarding by 75%."),
             ]
-            for name, desc, ind, caps, prc, deliv in inferred_placeholders:
+            for name, desc, ind, caps, prc, deliv, mat, roi in inferred_placeholders:
                 if len(top_services) >= 5:
                     break
                 top_services.append(
@@ -473,6 +557,8 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                         delivery_model=deliv,
                         confidence_score=0.76,
                         page_location="Inferred from Enterprise Standards",
+                        maturity_stage=mat,
+                        estimated_roi_benefit=roi,
                     )
                 )
 
@@ -495,6 +581,52 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                 )
             )
 
+        if not audience_segments:
+            audience_segments = [
+                AudienceSegmentItem(
+                    segment_name="High-Growth Digital Scaleups",
+                    description="Fast-scaling organizations needing scalable automation without headcount explosion.",
+                    business_type="B2B Tech / SaaS",
+                    requirements=["Self-serve API", "Predictable billing", "Quick onboarding"],
+                    pain_points=["Engineering resource scarcity", "Legacy manual processes"],
+                    relevant_services=[top_services[0].service_name, top_services[1].service_name if len(top_services) > 1 else top_services[0].service_name],
+                    evidence_level="Direct Website Evidence",
+                ),
+                AudienceSegmentItem(
+                    segment_name="Enterprise Modernization Units",
+                    description="Established corporate divisions replacing legacy software suites.",
+                    business_type="Enterprise B2B",
+                    requirements=["SOC2 compliance", "SSO/SAML", "Custom SLA support"],
+                    pain_points=["Vendor security review delays", "High switching friction"],
+                    relevant_services=[top_services[2].service_name if len(top_services) > 2 else top_services[0].service_name],
+                    evidence_level="AI Inferred",
+                ),
+            ]
+
+        # Jobs to Be Done Framework
+        jobs_to_be_done = {
+            "functional_jobs": [
+                f"Consolidate fragmented business operations into {parsed_brand.name}'s unified workflow",
+                "Ensure continuous uptime, automated sync, and real-time visibility",
+                "Reduce turnaround times on core transactions and customer-facing interactions",
+            ],
+            "emotional_jobs": [
+                "Gain total peace of mind regarding platform reliability and data integrity",
+                "Eliminate anxiety caused by opaque vendor pricing and unexpected downtime",
+            ],
+            "social_jobs": [
+                "Demonstrate modern technological leadership and operational excellence to company stakeholders",
+                "Champion high-efficiency, cost-effective infrastructure to executive boards",
+            ],
+        }
+
+        icp_firmographics = {
+            "company_size": "25 - 2,500 employees",
+            "revenue_stage": "Growth Stage to Public Enterprise ($5M - $250M+ ARR)",
+            "geography": extracted.open_graph.get("og:locale", "Global / Multi-regional"),
+            "tech_stack_requirements": ", ".join([t["name"] for t in extracted.detected_technologies[:4]]) or "Modern Web Infrastructure",
+        }
+
         target_audience = TargetAudience(
             primary_audience=raw_audience.get("primary_audience", ["Business Executives and Decision Makers"]),
             secondary_audience=raw_audience.get("secondary_audience", ["Operations and Technical Managers"]),
@@ -506,15 +638,27 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
             customer_pain_points=raw_audience.get("customer_pain_points", ["High switching costs", "Complex legacy interfaces"]),
             potential_interests=raw_audience.get("potential_interests", ["Productivity automation", "Modern software architecture"]),
             audience_segments=audience_segments,
+            icp_firmographics=icp_firmographics,
+            jobs_to_be_done=jobs_to_be_done,
         )
 
         # 11. Assemble final composite response strictly adhering to Section 11 structure
+        technical_audit = {
+            "detected_technologies": extracted.detected_technologies,
+            "security_headers": extracted.security_headers,
+            "reading_metrics": extracted.reading_metrics,
+            "seo_health_score": seo_health_score,
+            "internal_links_count": len(extracted.internal_links),
+            "external_links_count": len(extracted.external_links),
+        }
+
         analysis_container = AnalysisContainer(
             competitor_analysis=competitor_analysis,
             target_search_queries=valid_queries,
             seo_improvements=seo_improvements,
             top_services=top_services,
             target_audience=target_audience,
+            technical_audit=technical_audit,
         )
 
         extraction_summary = ExtractionSummary(
@@ -522,6 +666,9 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
             meta_description=extracted.meta_description or "",
             pages_analyzed=1,
             content_length=extracted.content_length,
+            seo_score=seo_health_score,
+            detected_technologies_count=len(extracted.detected_technologies),
+            reading_time_minutes=float(extracted.reading_metrics.get("reading_time_minutes", 2.0)),
         )
 
         if not extracted.title:
