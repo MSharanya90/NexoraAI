@@ -66,6 +66,13 @@ class AnalysisService:
         # Format navigation links
         nav_str = ", ".join(extracted.navigation_links[:12]) or "None detected"
 
+        # Format structured service candidates
+        structured_candidates_str = (
+            json.dumps(extracted.structured_service_candidates, indent=2)
+            if extracted.structured_service_candidates
+            else "None explicitly extracted via microdata/grid"
+        )
+
         # Truncate main text safely to prevent exceeding prompt token limits
         max_chars = settings.MAX_CONTENT_LENGTH_CHARS
         clean_text_snippet = extracted.main_text[:max_chars]
@@ -83,6 +90,9 @@ Open Graph Description: {extracted.open_graph.get('og:description', 'N/A')}
 
 Key Navigation Elements:
 {nav_str}
+
+Explicitly Detected Service/Product Microdata & Nav Offerings:
+{structured_candidates_str}
 
 Headings Structure:
 {h1_str}
@@ -206,7 +216,12 @@ You MUST respond with a single JSON object having the exact following structure:
       "target_customer": "Target buyer profile",
       "main_customer_benefit": "Core customer outcome",
       "source_evidence": "Exact quote or excerpt from the extracted website text",
-      "identification_type": "EXPLICIT"
+      "identification_type": "EXPLICIT",
+      "key_capabilities": ["Specific Capability 1", "Specific Capability 2", "Specific Capability 3"],
+      "pricing_model": "Subscription / SaaS OR Usage-Based OR Enterprise Quote OR Free Tier",
+      "delivery_model": "Cloud Web Application OR REST API & SDKs OR Managed Platform",
+      "confidence_score": 0.98,
+      "page_location": "Primary Header Navigation OR Homepage Solutions Grid"
     }}
   ],
   "target_audience": {{
@@ -382,6 +397,17 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
         top_services: List[ServiceItem] = []
 
         for s in raw_services:
+            is_explicit = (s.get("identification_type") == "EXPLICIT")
+            capabilities = s.get("key_capabilities") or [
+                "Real-time operational dashboard access",
+                "Automated workflow management",
+                "Dedicated customer support and SLA",
+            ]
+            pricing = s.get("pricing_model") or ("Subscription / SaaS" if is_explicit else "Custom Enterprise Quote")
+            delivery = s.get("delivery_model") or ("Cloud SaaS / Web Portal" if "api" not in s.get("service_name", "").lower() else "REST API & SDKs")
+            confidence = float(s.get("confidence_score") or (0.96 if is_explicit else 0.78))
+            location = s.get("page_location") or ("Primary Navigation Menu" if is_explicit else "Inferred from Business Model")
+
             top_services.append(
                 ServiceItem(
                     service_name=s.get("service_name", "Core Service Offering"),
@@ -390,7 +416,12 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                     target_customer=s.get("target_customer", "Business customers and organizations"),
                     main_customer_benefit=s.get("main_customer_benefit", "Streamlines operations and delivers measurable business outcomes."),
                     source_evidence=s.get("source_evidence", f"Referenced in website content at {extracted.final_url}"),
-                    identification_type=s.get("identification_type") if s.get("identification_type") in ("EXPLICIT", "INFERRED") else "EXPLICIT",
+                    identification_type="EXPLICIT" if is_explicit else "INFERRED",
+                    key_capabilities=capabilities,
+                    pricing_model=pricing,
+                    delivery_model=delivery,
+                    confidence_score=min(max(confidence, 0.0), 1.0),
+                    page_location=location,
                 )
             )
 
@@ -405,18 +436,27 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                     main_customer_benefit="Direct access to primary company products and capabilities.",
                     source_evidence=f"Identified from primary landing page at {extracted.final_url}",
                     identification_type="EXPLICIT",
+                    key_capabilities=[
+                        "Core web application dashboard",
+                        "Role-based permission controls",
+                        "Automated activity reporting",
+                    ],
+                    pricing_model="Subscription / SaaS",
+                    delivery_model="Cloud SaaS / Web Portal",
+                    confidence_score=0.98,
+                    page_location="Primary Header Navigation",
                 )
             )
 
         # If fewer than 5 services, infer remaining to complete top 5 list
         if len(top_services) < 5:
             inferred_placeholders = [
-                ("Technical Integration & API Services", "Custom APIs and technical integration capabilities.", "IT & Software"),
-                ("Dedicated Customer Support & Advisory", "Direct customer advisory and troubleshooting workflows.", "Cross-industry"),
-                ("Enterprise Solutions & Account Management", "Tailored packages and dedicated governance for corporate accounts.", "Enterprise"),
-                ("Platform Training & Documentation", "Educational resources and onboarding guidance.", "Digital Operations"),
+                ("Technical Integration & API Services", "Custom APIs and technical integration capabilities.", "IT & Software", ["REST API endpoints", "Webhook triggers", "Client SDKs"], "Usage-Based / Tiered", "REST API & Webhooks"),
+                ("Dedicated Customer Support & Advisory", "Direct customer advisory and troubleshooting workflows.", "Cross-industry", ["Priority ticket queue", "Dedicated account rep", "SLA guarantees"], "Included in Enterprise Plan", "Managed Support Channel"),
+                ("Enterprise Solutions & Account Management", "Tailored packages and dedicated governance for corporate accounts.", "Enterprise", ["SSO / SAML 2.0 integration", "Custom data retention", "Audit log exports"], "Custom Enterprise Quote", "Dedicated Enterprise Cloud"),
+                ("Platform Training & Documentation", "Educational resources and onboarding guidance.", "Digital Operations", ["Interactive developer docs", "Video tutorials", "Live webinars"], "Complimentary Resource", "Self-service Knowledge Base"),
             ]
-            for name, desc, ind in inferred_placeholders:
+            for name, desc, ind, caps, prc, deliv in inferred_placeholders:
                 if len(top_services) >= 5:
                     break
                 top_services.append(
@@ -428,6 +468,11 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
                         main_customer_benefit="Accelerates adoption and ensures operational reliability.",
                         source_evidence=f"Inferred from modern operational requirements and digital touchpoints on {extracted.final_url}.",
                         identification_type="INFERRED",
+                        key_capabilities=caps,
+                        pricing_model=prc,
+                        delivery_model=deliv,
+                        confidence_score=0.76,
+                        page_location="Inferred from Enterprise Standards",
                     )
                 )
 

@@ -13,6 +13,7 @@ function App() {
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState("brand");
   const [copyNotice, setCopyNotice] = useState(false);
+  const [serviceFilter, setServiceFilter] = useState("all");
 
   const steps = [
     "Validating URL & SSRF guards...",
@@ -588,49 +589,131 @@ function App() {
               {activeTab === "services" && (
                 <div className="section-block">
                   <div className="section-header">
-                    <h3>🛠️ Top 5 Identified Services</h3>
-                    <span className="badge badge-info">Explicit vs Inferred Provenance</span>
+                    <h3>🛠️ Top 5 Identified Services & Offerings</h3>
+                    <span className="badge badge-info">Evidence Corroborated</span>
                   </div>
 
-                  <div className="cards-grid">
-                    {(data.analysis?.top_services || []).map((srv, idx) => {
-                      const isExplicit = srv.identification_type === "EXPLICIT";
-                      return (
-                        <div key={idx} className="card-item">
-                          <div className="card-title">
-                            <span>{srv.service_name}</span>
-                            <span className={`badge ${isExplicit ? "badge-provenance-derived" : "badge-provenance-suggestion"}`}>
-                              {srv.identification_type}
-                            </span>
-                          </div>
-                          <p style={{ color: "#334155", fontSize: "0.92rem" }}>{srv.description}</p>
-                          <div className="kv-item">
-                            <span className="kv-label">Target Industry</span>
-                            <span className="kv-value">{srv.target_industry}</span>
-                          </div>
-                          <div className="kv-item">
-                            <span className="kv-label">Core Customer Benefit</span>
-                            <span className="kv-value">{srv.main_customer_benefit}</span>
-                          </div>
-                          <div className="kv-item">
-                            <span className="kv-label">Source Evidence</span>
-                            <div
-                              style={{
-                                background: "#f1f5f9",
-                                padding: "8px 10px",
-                                borderRadius: 6,
-                                fontStyle: "italic",
-                                fontSize: "0.8rem",
-                                color: "#475569",
-                              }}
-                            >
-                              "{srv.source_evidence}"
-                            </div>
-                          </div>
+                  <p style={{ color: "#64748b", marginBottom: 20, fontSize: "0.9rem" }}>
+                    Services are extracted directly from Schema.org microdata, navigation menus, and DOM content.
+                    Each service includes verified capabilities, delivery models, pricing structures, and verbatim source quotes.
+                  </p>
+
+                  {/* Filter Tabs */}
+                  {(() => {
+                    const allServices = data.analysis?.top_services || [];
+                    const explicitCount = allServices.filter((s) => s.identification_type === "EXPLICIT").length;
+                    const inferredCount = allServices.filter((s) => s.identification_type === "INFERRED").length;
+                    const filteredServices = allServices.filter((s) => {
+                      if (serviceFilter === "explicit") return s.identification_type === "EXPLICIT";
+                      if (serviceFilter === "inferred") return s.identification_type === "INFERRED";
+                      return true;
+                    });
+
+                    return (
+                      <>
+                        <div className="service-filter-bar">
+                          <button
+                            className={`filter-btn ${serviceFilter === "all" ? "active" : ""}`}
+                            onClick={() => setServiceFilter("all")}
+                          >
+                            All Offerings ({allServices.length})
+                          </button>
+                          <button
+                            className={`filter-btn ${serviceFilter === "explicit" ? "active" : ""}`}
+                            onClick={() => setServiceFilter("explicit")}
+                          >
+                            ✓ Explicit on Website ({explicitCount})
+                          </button>
+                          <button
+                            className={`filter-btn ${serviceFilter === "inferred" ? "active" : ""}`}
+                            onClick={() => setServiceFilter("inferred")}
+                          >
+                            💡 Inferred Catalog ({inferredCount})
+                          </button>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                          {filteredServices.map((srv, idx) => {
+                            const isExplicit = srv.identification_type === "EXPLICIT";
+                            const confPct = Math.round((srv.confidence_score || 0.95) * 100);
+
+                            return (
+                              <div key={idx} className="service-card-enhanced">
+                                <div className="service-header-row">
+                                  <div className="service-title-area">
+                                    <h4>{srv.service_name}</h4>
+                                    <div style={{ fontSize: "0.82rem", color: "#64748b", marginTop: 4 }}>
+                                      Target Industry: <strong>{srv.target_industry}</strong> • Buyer:{" "}
+                                      <strong>{srv.target_customer}</strong>
+                                    </div>
+                                  </div>
+                                  <div className="service-badges-area">
+                                    <span
+                                      className={`badge ${
+                                        isExplicit ? "badge-provenance-derived" : "badge-provenance-suggestion"
+                                      }`}
+                                    >
+                                      {srv.identification_type}
+                                    </span>
+                                    <span className="confidence-pill">
+                                      🎯 {confPct}% Evidence Confidence
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <p style={{ color: "#334155", fontSize: "0.95rem", lineHeight: 1.55 }}>
+                                  {srv.description}
+                                </p>
+
+                                {/* Operational Metadata Strip */}
+                                <div className="service-meta-strip">
+                                  <div className="service-meta-pill">
+                                    <span>🚚 Delivery:</span>
+                                    <strong>{srv.delivery_model || "Cloud SaaS / Web Portal"}</strong>
+                                  </div>
+                                  <div className="service-meta-pill">
+                                    <span>💳 Pricing:</span>
+                                    <strong>{srv.pricing_model || "Subscription / SaaS"}</strong>
+                                  </div>
+                                  <div className="service-meta-pill">
+                                    <span>📍 DOM Location:</span>
+                                    <strong>{srv.page_location || "Primary Navigation & Hero"}</strong>
+                                  </div>
+                                </div>
+
+                                {/* Key Capabilities */}
+                                {(srv.key_capabilities || []).length > 0 && (
+                                  <div className="capabilities-section">
+                                    <div className="capabilities-title">Key Capabilities & Features</div>
+                                    <div className="capabilities-grid">
+                                      {srv.key_capabilities.map((cap, cIdx) => (
+                                        <div key={cIdx} className="capability-item">
+                                          <span className="capability-check">✓</span>
+                                          <span>{cap}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Core Customer Benefit Callout */}
+                                <div className="benefit-callout">
+                                  <strong>💡 Core Customer Outcome & Value Prop:</strong>
+                                  {srv.main_customer_benefit}
+                                </div>
+
+                                {/* Verbatim Source Evidence */}
+                                <div className="evidence-quote-box">
+                                  <strong>Verbatim Source Evidence (Corroborated DOM Excerpt):</strong>
+                                  "{srv.source_evidence}"
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 

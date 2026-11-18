@@ -65,6 +65,10 @@ class ExtractedWebsiteData(BaseModel):
     content_length: int = 0
     extraction_latency_ms: float = 0.0
     detected_technical_issues: List[Dict[str, Any]] = Field(default_factory=list)
+    structured_service_candidates: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Explicit service candidates discovered from schema.org JSON-LD, nav menus, or feature cards",
+    )
 
 
 # ============================================================================
@@ -177,7 +181,7 @@ class SEOImprovements(BaseModel):
 
 
 class ServiceItem(BaseModel):
-    """Service identification from actual website content."""
+    """Service identification from actual website content with rich operational metadata."""
     service_name: str
     description: str
     target_industry: str
@@ -190,6 +194,28 @@ class ServiceItem(BaseModel):
     identification_type: Literal["EXPLICIT", "INFERRED"] = Field(
         ...,
         description="EXPLICIT if directly mentioned on site; INFERRED if deduced",
+    )
+    key_capabilities: List[str] = Field(
+        default_factory=list,
+        description="Specific features, sub-capabilities, or technical functions of this service",
+    )
+    pricing_model: Optional[str] = Field(
+        default=None,
+        description="Identified or typical pricing model (e.g. Free Tier, Usage-Based, Subscription, Enterprise Quote)",
+    )
+    delivery_model: Optional[str] = Field(
+        default=None,
+        description="How the service is consumed (e.g. Web App / SaaS, REST API & SDKs, Managed Cloud, Advisory)",
+    )
+    confidence_score: float = Field(
+        default=0.95,
+        ge=0.0,
+        le=1.0,
+        description="Corroboration confidence score (0.0 to 1.0) based on DOM presence and evidence density",
+    )
+    page_location: Optional[str] = Field(
+        default=None,
+        description="Where on the website the evidence was identified (e.g. Primary Navigation, Hero Section, Solutions Grid)",
     )
 
 

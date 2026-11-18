@@ -518,6 +518,16 @@ class MockLLMProvider(BaseLLMProvider):
                     "main_customer_benefit": "Centralized operational oversight with high uptime and intuitive interface.",
                     "source_evidence": f"Derived from primary website structure and portal features on {domain}.",
                     "identification_type": "EXPLICIT",
+                    "key_capabilities": [
+                        "Real-time analytics & activity feed",
+                        "Role-based access control (RBAC)",
+                        "Customizable project workspaces",
+                        "Automated system health telemetry"
+                    ],
+                    "pricing_model": "Subscription / SaaS (Monthly & Annual Tiers)",
+                    "delivery_model": "Cloud Web Application (PaaS)",
+                    "confidence_score": 0.98,
+                    "page_location": "Primary Header Navigation & Hero Grid",
                 },
                 {
                     "service_name": "Integration & Workflow Automation",
@@ -527,6 +537,16 @@ class MockLLMProvider(BaseLLMProvider):
                     "main_customer_benefit": "Reduces manual data entry and accelerates cross-system data transfer.",
                     "source_evidence": "Referenced in platform capabilities and architecture references.",
                     "identification_type": "EXPLICIT",
+                    "key_capabilities": [
+                        "RESTful API endpoints with Webhooks",
+                        "Pre-built connectors for Slack, GitHub & CRM",
+                        "Bidirectional real-time event streaming",
+                        "API rate-limit & error retry management"
+                    ],
+                    "pricing_model": "Usage-Based / Included in Pro Tier",
+                    "delivery_model": "REST API & Webhooks",
+                    "confidence_score": 0.95,
+                    "page_location": "Developer Documentation & Features Page",
                 },
                 {
                     "service_name": "Customer Support & Implementation Advisory",
@@ -536,24 +556,54 @@ class MockLLMProvider(BaseLLMProvider):
                     "main_customer_benefit": "Fast time-to-value and rapid resolution of operational roadblocks.",
                     "source_evidence": "Contact and support touchpoints highlighted across navigation.",
                     "identification_type": "EXPLICIT",
+                    "key_capabilities": [
+                        "24/7 priority ticketing & Slack channel support",
+                        "Guided onboarding & data migration assistance",
+                        "Dedicated Solutions Engineer for deployment",
+                        "Guaranteed 99.9% uptime SLA backing"
+                    ],
+                    "pricing_model": "Complimentary Onboarding / Custom SLA Add-on",
+                    "delivery_model": "Managed Professional Advisory",
+                    "confidence_score": 0.94,
+                    "page_location": "Contact & Support Touchpoints in Header",
                 },
                 {
-                    "service_name": "Security & Identity Management",
+                    "service_name": "Security & Identity Governance",
                     "description": "Enterprise-grade user access controls, SSL encryption, and data governance.",
                     "target_industry": "Regulated industries, Finance, and Enterprise IT",
                     "target_customer": "CISOs, Compliance officers, and Security Leads",
                     "main_customer_benefit": "Ensures data confidentiality and satisfies institutional compliance audits.",
                     "source_evidence": "Deduced from secure HTTPS protocol, privacy terms, and platform access safeguards.",
                     "identification_type": "INFERRED",
+                    "key_capabilities": [
+                        "SAML 2.0 / Okta / Azure AD Single Sign-On (SSO)",
+                        "SOC 2 Type II and GDPR data compliance",
+                        "Granular audit logs & session monitoring",
+                        "End-to-end TLS 1.3 encryption at rest and in transit"
+                    ],
+                    "pricing_model": "Enterprise Plan Add-on",
+                    "delivery_model": "Cloud Security Governance Layer",
+                    "confidence_score": 0.82,
+                    "page_location": "Inferred from Security & Privacy Documentation",
                 },
                 {
-                    "service_name": "Custom Enterprise Consultation",
+                    "service_name": "Custom Enterprise Scoping & Solutions",
                     "description": "Tailored solution scoping and architecture design for large-scale enterprise deployments.",
                     "target_industry": "Global Enterprise",
                     "target_customer": "VP of Technology and Procurement Directors",
                     "main_customer_benefit": "Customized deployment roadmap aligned directly with corporate governance.",
                     "source_evidence": "Inferred from commercial business model and high-tier contact pathways.",
                     "identification_type": "INFERRED",
+                    "key_capabilities": [
+                        "Dedicated private VPC or on-prem deployment options",
+                        "Custom contract terms & procurement billing",
+                        "Tailored feature development requests",
+                        "Quarterly executive business reviews (QBR)"
+                    ],
+                    "pricing_model": "Custom Annual Contract (Direct Sales)",
+                    "delivery_model": "Dedicated Enterprise Deployment",
+                    "confidence_score": 0.76,
+                    "page_location": "Inferred from Enterprise Pricing Contact CTA",
                 },
             ],
             "target_audience": {

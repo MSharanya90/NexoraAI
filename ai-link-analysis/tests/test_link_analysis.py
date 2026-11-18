@@ -427,6 +427,13 @@ def test_endpoint_link_analysis_success_mocked(mock_fetch, mock_dns):
     for s in services:
         assert s["identification_type"] in ("EXPLICIT", "INFERRED")
         assert "source_evidence" in s
+        assert "key_capabilities" in s
+        assert len(s["key_capabilities"]) > 0
+        assert "pricing_model" in s
+        assert "delivery_model" in s
+        assert "confidence_score" in s
+        assert 0.0 <= s["confidence_score"] <= 1.0
+        assert "page_location" in s
 
     # 5. Target Audience
     audience = analysis["target_audience"]

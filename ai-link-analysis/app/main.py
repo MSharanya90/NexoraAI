@@ -1,6 +1,7 @@
 """FastAPI main application entrypoint with robust routes, CORS, and exception handling."""
 
 import logging
+import os
 import time
 from typing import Any, Dict
 from contextlib import asynccontextmanager
@@ -9,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.schemas import (
@@ -62,6 +64,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount built React dashboard at /dashboard if present
+dist_candidates = [
+    os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"),
+    os.path.join(os.path.dirname(__file__), "frontend", "dist"),
+    os.path.join(os.getcwd(), "ai-link-analysis", "frontend", "dist"),
+    os.path.join(os.getcwd(), "frontend", "dist"),
+]
+for dist_path in dist_candidates:
+    abs_dist = os.path.abspath(dist_path)
+    if os.path.exists(abs_dist) and os.path.isdir(abs_dist):
+        logger.info(f"Mounting frontend dashboard at /dashboard from {abs_dist}")
+        app.mount("/dashboard", StaticFiles(directory=abs_dist, html=True), name="dashboard")
+        break
 
 
 # ============================================================================

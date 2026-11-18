@@ -1,5 +1,6 @@
 """Secure website extraction service utilizing HTTPX, BeautifulSoup4, and rigorous SSRF guards."""
 
+import json
 import re
 import time
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -251,7 +252,10 @@ class WebsiteExtractor:
         # 10. Clean and extract main website text
         main_text = self._extract_clean_main_text(soup)
 
-        # 11. Run deterministic Technical SEO diagnostics
+        # 11. Extract explicit structured service candidates from DOM (JSON-LD, Nav, Feature cards)
+        structured_service_candidates = self._extract_structured_services(soup, final_url)
+
+        # 12. Run deterministic Technical SEO diagnostics
         technical_issues = self._detect_technical_issues(
             title=title,
             meta_description=meta_description,
@@ -286,7 +290,79 @@ class WebsiteExtractor:
             content_length=len(main_text),
             extraction_latency_ms=latency_ms,
             detected_technical_issues=technical_issues,
+            structured_service_candidates=structured_service_candidates,
         )
+
+    def _extract_structured_services(self, soup: BeautifulSoup, final_url: str) -> List[Dict[str, Any]]:
+        """Extract explicit, high-confidence service candidates from JSON-LD, nav menus, and card grids."""
+        candidates: List[Dict[str, Any]] = []
+        seen_names = set()
+
+        # 1. Inspect Schema.org JSON-LD scripts
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                raw_json = json.loads(script.string or "{}")
+                items = raw_json if isinstance(raw_json, list) else [raw_json]
+                for item in items:
+                    t = item.get("@type", "")
+                    if t in ("Service", "Product", "Offer", "SoftwareApplication"):
+                        name = item.get("name", "").strip()
+                        desc = item.get("description", "").strip()
+                        if name and name.lower() not in seen_names:
+                            seen_names.add(name.lower())
+                            candidates.append({
+                                "name": name,
+                                "description": desc[:300] if desc else f"Officially declared {t} schema.",
+                                "source": "Schema.org JSON-LD microdata",
+                                "page_location": "Metadata Head (JSON-LD)",
+                                "confidence": 0.99,
+                            })
+            except Exception:
+                pass
+
+        # 2. Inspect Navigation menus under Products/Services/Solutions
+        for nav in soup.find_all(["nav", "header"]):
+            for parent in nav.find_all(["li", "div"]):
+                header_text = parent.find(["a", "span", "button"])
+                if header_text:
+                    h_text = header_text.get_text(" ", strip=True).lower()
+                    if any(k in h_text for k in ["product", "service", "solution", "feature"]):
+                        for sub_a in parent.find_all("a", href=True):
+                            sub_text = sub_a.get_text(" ", strip=True)
+                            if 2 < len(sub_text) < 50 and sub_text.lower() not in seen_names:
+                                if sub_text.lower() not in ["all products", "overview", "view all", "pricing"]:
+                                    seen_names.add(sub_text.lower())
+                                    candidates.append({
+                                        "name": sub_text,
+                                        "description": f"Featured product/service link in navigation under '{h_text}'.",
+                                        "source": f"Navigation Menu Link ({sub_a['href']})",
+                                        "page_location": "Primary Header Navigation",
+                                        "confidence": 0.95,
+                                    })
+
+        # 3. Inspect cards and grids with service/feature keywords
+        card_selectors = [
+            ("div", re.compile(r"(service|feature|solution|product|offering)[-_]?(card|item|block|box)", re.I)),
+            ("section", re.compile(r"(service|feature|solution|product)", re.I)),
+        ]
+        for tag_name, pat in card_selectors:
+            for el in soup.find_all(tag_name, class_=pat)[:12]:
+                h = el.find(["h2", "h3", "h4", "h5", "strong"])
+                p = el.find(["p", "span"])
+                if h:
+                    name = h.get_text(" ", strip=True)
+                    desc = p.get_text(" ", strip=True) if p else ""
+                    if 3 < len(name) < 60 and name.lower() not in seen_names:
+                        seen_names.add(name.lower())
+                        candidates.append({
+                            "name": name,
+                            "description": desc[:250] if desc else "Identified component from services showcase grid.",
+                            "source": f"Grid Element: '{name} - {desc[:100]}'",
+                            "page_location": "Homepage Solutions Grid",
+                            "confidence": 0.92,
+                        })
+
+        return candidates[:10]
 
     def _extract_clean_main_text(self, soup: BeautifulSoup) -> str:
         """Strip script, styles, comments, SVG, and footer noise to obtain clean body text."""

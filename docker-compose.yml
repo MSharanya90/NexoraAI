@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  api:
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: link-analysis-api
+    container_name: link-analysis-backend
     ports:
       - "8000:8000"
     environment:
@@ -31,3 +31,14 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: link-analysis-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
