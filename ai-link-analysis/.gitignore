@@ -1,0 +1,45 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Distribution & packaging
+build/
+dist/
+*.egg-info/
+
+# Logs and runtime databases
+*.log
+*.sqlite
+*.db
+
+# Frontend (if present)
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
