@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import "./App.css";
 
-const API_BASE = "http://localhost:8000";
+const DEFAULT_API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 function App() {
   const [url, setUrl] = useState("https://stripe.com");
+  const [apiBase, setApiBase] = useState(DEFAULT_API_BASE);
   const [refreshCache, setRefreshCache] = useState(false);
   const [preferredProvider, setPreferredProvider] = useState("mock");
   const [loading, setLoading] = useState(false);
@@ -36,7 +37,7 @@ function App() {
     }, 700);
 
     try {
-      const response = await fetch(`${API_BASE}/link-analysis`, {
+      const response = await fetch(`${apiBase.replace(/\/$/, '')}/link-analysis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -208,6 +209,23 @@ function App() {
                     <option value="openai">OpenAI (GPT-4o-mini)</option>
                     <option value="anthropic">Anthropic (Claude 3.5 Haiku)</option>
                   </select>
+                </div>
+
+                <div className="control-item">
+                  <span>Backend URL:</span>
+                  <input
+                    type="text"
+                    value={apiBase}
+                    onChange={(e) => setApiBase(e.target.value)}
+                    disabled={loading}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.82rem",
+                      width: 190,
+                    }}
+                  />
                 </div>
               </div>
             </form>
