@@ -584,3 +584,86 @@ async def test_all_four_providers_execution(monkeypatch):
         else:
             assert meta["estimated_cost_usd"] == 0.0, "Mock provider should be free"
 
+
+@pytest.mark.asyncio
+async def test_youtube_video_analysis():
+    """Verify end-to-end extraction and analysis for YouTube video URLs."""
+    client = TestClient(app)
+    response = client.post(
+        "/link-analysis",
+        json={
+            "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "preferred_provider": "mock",
+            "refresh_cache": True,
+        },
+    )
+    assert response.status_code == 200, f"YouTube analysis failed: {response.text}"
+    data = response.json()
+    assert data["success"] is True
+    # Verify brand name is NOT "Www" or "Youtube"
+    assert "www" not in data["brand"]["name"].lower()
+    assert "youtube" not in data["brand"]["name"].lower() or len(data["brand"]["name"]) > 10
+    assert "video" in data["brand"]["category"].lower() or "entertainment" in data["brand"]["category"].lower()
+    # Verify competitors
+    comp_names = [c["competitor_name"].lower() for c in data["analysis"]["competitor_analysis"]["competitors"]]
+    assert any("vevo" in c or "spotify" in c or "twitch" in c for c in comp_names)
+    # Verify services
+    assert len(data["analysis"]["top_services"]) == 5
+    assert len(data["analysis"]["target_search_queries"]) == 5
+
+
+@pytest.mark.asyncio
+async def test_instagram_reel_analysis():
+    """Verify end-to-end extraction and analysis for Instagram Reel URLs."""
+    client = TestClient(app)
+    response = client.post(
+        "/link-analysis",
+        json={
+            "url": "https://www.instagram.com/reel/C3b4XyZ/",
+            "preferred_provider": "mock",
+            "refresh_cache": True,
+        },
+    )
+    assert response.status_code == 200, f"Instagram analysis failed: {response.text}"
+    data = response.json()
+    assert data["success"] is True
+    assert "www" not in data["brand"]["name"].lower()
+    assert data["brand"]["name"] != "Instagram"
+    assert "social" in data["brand"]["category"].lower() or "creator" in data["brand"]["category"].lower()
+    comp_names = [c["competitor_name"].lower() for c in data["analysis"]["competitor_analysis"]["competitors"]]
+    assert any("tiktok" in c or "shorts" in c or "snapchat" in c for c in comp_names)
+
+
+@pytest.mark.asyncio
+async def test_github_repo_analysis():
+    """Verify end-to-end extraction and analysis for GitHub repository URLs."""
+    client = TestClient(app)
+    response = client.post(
+        "/link-analysis",
+        json={
+            "url": "https://github.com/facebook/react",
+            "preferred_provider": "mock",
+            "refresh_cache": True,
+        },
+    )
+    assert response.status_code == 200, f"GitHub analysis failed: {response.text}"
+    data = response.json()
+    assert data["success"] is True
+    assert "www" not in data["brand"]["name"].lower()
+    assert "react" in data["brand"]["name"].lower()
+    assert "open source" in data["brand"]["category"].lower() or "developer" in data["brand"]["category"].lower()
+    comp_names = [c["competitor_name"].lower() for c in data["analysis"]["competitor_analysis"]["competitors"]]
+    assert any("gitlab" in c or "bitbucket" in c or "source" in c for c in comp_names)
+
+
+@pytest.mark.asyncio
+async def test_resilient_anti_bot_fallback():
+    """Verify that websites protected by 403 anti-bot or Cloudflare restrictions gracefully fall back without crashing."""
+    extractor = WebsiteExtractor()
+    fallback_data = extractor._extract_resilient_domain_fallback("https://protected-anti-bot.example.com", "403 Forbidden")
+    assert fallback_data.status_code == 200
+    assert "Protected-anti-bot" in fallback_data.title
+    assert len(fallback_data.structured_service_candidates) >= 3
+    assert len(fallback_data.detected_technologies) >= 2
+
+

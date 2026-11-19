@@ -284,8 +284,18 @@ Generate exactly 3 competitors, exactly 5 target search queries (one for each pl
 
         # 5. Extract Brand Info
         raw_brand = raw_analysis.get("brand", {})
+        fallback_name = urlparse(extracted.final_url).netloc.split(".")[0].capitalize()
+        if "youtube" in extracted.final_url.lower() or "youtu.be" in extracted.final_url.lower():
+            fallback_name = extracted.title.split("-")[0].strip() if extracted.title else "YouTube Video Creator"
+        elif "instagram" in extracted.final_url.lower():
+            fallback_name = "Instagram Creator"
+        elif "tiktok" in extracted.final_url.lower():
+            fallback_name = "TikTok Creator"
+        elif "github.com" in extracted.final_url.lower():
+            fallback_name = extracted.title.split("•")[0].strip() if extracted.title else "GitHub Repository"
+
         parsed_brand = BrandInfo(
-            name=raw_brand.get("name") or urlparse(extracted.final_url).netloc.split(".")[0].capitalize(),
+            name=raw_brand.get("name") or fallback_name,
             category=raw_brand.get("category", "Digital & Commercial Services"),
             summary=raw_brand.get("summary", f"Business operations at {extracted.final_url}."),
             business_positioning=raw_brand.get("business_positioning"),

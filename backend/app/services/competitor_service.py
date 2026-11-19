@@ -26,6 +26,36 @@ class CompetitorService:
             ("Discord", "https://discord.com", "Voice, video, and text communication platform."),
             ("Mattermost", "https://mattermost.com", "Open-source secure collaboration platform."),
         ],
+        "youtube": [
+            ("VEVO Music Network", "https://www.vevo.com", "Global premium music video and entertainment network."),
+            ("Spotify Video & Podcasts", "https://www.spotify.com", "Global streaming audio and video creator ecosystem."),
+            ("Twitch Interactive", "https://www.twitch.tv", "Leading live streaming platform for content creators and gaming."),
+        ],
+        "instagram": [
+            ("TikTok Short-Form Video", "https://www.tiktok.com", "High-velocity short-form mobile video and creator network."),
+            ("YouTube Shorts", "https://www.youtube.com", "Vertical short-form video product embedded in YouTube."),
+            ("Snapchat Spotlight", "https://www.snapchat.com", "Mobile-first vertical video and social messaging platform."),
+        ],
+        "tiktok": [
+            ("Instagram Reels", "https://www.instagram.com", "Short-form video and visual creator distribution platform."),
+            ("YouTube Shorts", "https://www.youtube.com", "Vertical short-form video reach across Google ecosystem."),
+            ("Triller", "https://triller.co", "AI-driven music and creator social video platform."),
+        ],
+        "twitter": [
+            ("Threads by Meta", "https://www.threads.net", "Fast-growing text-based social conversation network."),
+            ("Bluesky Social", "https://bsky.app", "Decentralized open social network protocol and microblogging platform."),
+            ("LinkedIn Creator Network", "https://www.linkedin.com", "Professional B2B thought leadership and industry discourse."),
+        ],
+        "x": [
+            ("Threads by Meta", "https://www.threads.net", "Fast-growing text-based social conversation network."),
+            ("Bluesky Social", "https://bsky.app", "Decentralized open social network protocol and microblogging platform."),
+            ("LinkedIn Creator Network", "https://www.linkedin.com", "Professional B2B thought leadership and industry discourse."),
+        ],
+        "github": [
+            ("GitLab", "https://gitlab.com", "Comprehensive open DevSecOps platform and Git repository management."),
+            ("Bitbucket (Atlassian)", "https://bitbucket.org", "Professional Git code management with Jira integration."),
+            ("SourceForge", "https://sourceforge.net", "Open source software directory and project hosting."),
+        ],
     }
 
     def detect_in_page_competitor_mentions(self, extracted: ExtractedWebsiteData) -> List[str]:

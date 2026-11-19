@@ -122,7 +122,9 @@ def resolve_and_validate_hostname(hostname: str) -> Tuple[bool, List[str], Optio
 
     # Resolve hostname via standard DNS resolver
     resolved_ips: List[str] = []
+    orig_timeout = socket.getdefaulttimeout()
     try:
+        socket.setdefaulttimeout(1.5)
         # Resolve both IPv4 and IPv6 addresses
         addr_info = socket.getaddrinfo(clean_host, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
         for item in addr_info:
@@ -130,10 +132,12 @@ def resolve_and_validate_hostname(hostname: str) -> Tuple[bool, List[str], Optio
             ip = sockaddr[0]
             if ip not in resolved_ips:
                 resolved_ips.append(ip)
-    except socket.gaierror as e:
+    except (socket.gaierror, socket.timeout, TimeoutError) as e:
         return False, [], f"DNS resolution failed for '{clean_host}': {str(e)}"
     except Exception as e:
         return False, [], f"Unexpected DNS lookup error for '{clean_host}': {str(e)}"
+    finally:
+        socket.setdefaulttimeout(orig_timeout)
 
     if not resolved_ips:
         return False, [], f"No IP addresses resolved for hostname '{clean_host}'"
